@@ -1,0 +1,57 @@
+import pandas as pd
+import numpy as np
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+# Load the dataset
+data = pd.read_csv('student_feedback.csv')
+
+# Remove any missing values
+data.dropna(inplace=True)
+
+# Convert the rating column to integers
+data['rating'] = data['rating'].astype(int)
+
+# Lowercase the text and remove any leading/trailing whitespace
+data['remarks'] = data['remarks'].str.lower().str.strip()
+
+# Remove any special characters and digits from the text
+data['remarks'] = data['remarks'].str.replace('[^a-zA-Z\s]', '')
+
+# Tokenize the text and remove stop words
+stop_words = set(stopwords.words('english'))
+def tokenize(text):
+    tokens = word_tokenize(text)
+    tokens = [token.lower() for token in tokens if token.isalpha()]
+    tokens = [token for token in tokens if token not in stop_words]
+    return tokens
+
+# Lemmatize the text
+lemmatizer = WordNetLemmatizer()
+def lemmatize(tokens):
+    lemmas = [lemmatizer.lemmatize(token) for token in tokens]
+    return lemmas
+
+# Vectorize the text data using TF-IDF
+vectorizer = TfidfVectorizer(tokenizer=tokenize, preprocessor=lemmatize)
+X = vectorizer.fit_transform(data['remarks'])
+y = data['rating']
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Train a Naive Bayes classifier
+clf = MultinomialNB()
+clf.fit(X_train, y_train)
+
+# Evaluate the model
+y_pred = clf.predict(X_test)
+print('Accuracy:', accuracy_score(y_test, y_pred))
+print('Classification report:\n', classification_report(y_test, y_pred))
+print('Confusion matrix:\n', confusion_matrix(y_test, y_pred))
